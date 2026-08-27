@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+optaplanner:
+  solver:
+    termination:
+      # Corte por tiempo: ajustar segun tamaño real del colegio.
+      # Para instancias medianas (decenas de cursos) unos segundos ya dan soluciones muy buenas.
+      spent-limit: 30s
+      # Alternativa: detenerse apenas el score no tenga penalizaciones duras y el score blando
+      # deje de mejorar por N segundos (unimproved-spent-limit), util para re-solves rapidos.
+      unimproved-spent-limit: 5s

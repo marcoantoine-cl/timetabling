@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <!-- Ultima serie de Spring Boot 2, compatible con Java 11 (Spring Boot 3 exige Java 17) -->
+        <version>2.7.18</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>cl.colegio</groupId>
+    <artifactId>timetabling</artifactId>
+    <version>0.1.0</version>
+    <name>timetabling</name>
+    <description>Motor de asignacion horaria de profesores para colegio</description>
+
+    <properties>
+        <java.version>11</java.version>
+        <!-- Ultimo release estable de OptaPlanner (Timefold es su sucesor, pero exige Java 17+) -->
+        <optaplanner.version>8.44.0.Final</optaplanner.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Motor de resolucion: OptaPlanner, integracion Spring Boot -->
+        <dependency>
+            <groupId>org.optaplanner</groupId>
+            <artifactId>optaplanner-spring-boot-starter</artifactId>
+            <version>${optaplanner.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.optaplanner</groupId>
+            <artifactId>optaplanner-test</artifactId>
+            <version>${optaplanner.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
