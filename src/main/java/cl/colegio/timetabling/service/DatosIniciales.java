@@ -71,9 +71,14 @@ public class DatosIniciales implements CommandLineRunner {
     }
 
     private SalaDto sala(String id, String nombre) {
+        return sala(id, nombre, "#6c757d");
+    }
+
+    private SalaDto sala(String id, String nombre, String color) {
         SalaDto s = new SalaDto();
         s.setId(id);
         s.setNombre(nombre);
+        s.setColor(color);
         return s;
     }
 

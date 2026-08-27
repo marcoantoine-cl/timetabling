@@ -62,5 +62,8 @@ public class SalaController {
         if (s.getNombre() == null || s.getNombre().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La sala debe tener nombre");
         }
+        if (s.getColor() == null || s.getColor().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La sala debe tener color");
+        }
     }
 }

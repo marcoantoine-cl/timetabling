@@ -4,6 +4,7 @@ public class SalaDto {
 
     private String id;
     private String nombre;
+    private String color;
 
     public String getId() {
         return id;
@@ -19,5 +20,13 @@ public class SalaDto {
 
     public void setNombre(String nombre) {
         this.nombre = nombre;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
     }
 }
