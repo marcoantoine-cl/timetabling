@@ -65,5 +65,10 @@ public class SalaController {
         if (s.getColor() == null || s.getColor().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La sala debe tener color");
         }
+        repositorio.buscarPorColor(s.getColor()).ifPresent(existing -> {
+            if (s.getId() == null || !s.getId().equals(existing.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una sala con color " + s.getColor());
+            }
+        });
     }
 }
