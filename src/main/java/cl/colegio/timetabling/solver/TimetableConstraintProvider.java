@@ -23,7 +23,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 // --- HARD ---
                 profesorSinChoque(factory),
                 cursoSinChoque(factory),
-                salaCompartidaSinChoque(factory),
+                salaSinChoque(factory),
                 profesorDisponible(factory),
                 horarioFijoRespetado(factory),
                 profesorDentroDeVentanaContrato(factory),
@@ -78,14 +78,15 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Curso sin choque de horario");
     }
 
-    // Dos ramos que requieren la misma sala compartida (ej. gimnasio) no pueden coincidir.
-    private Constraint salaCompartidaSinChoque(ConstraintFactory factory) {
+    // Dos ramos NO pueden coincidir en la misma sala al mismo tiempo. Ahora que toda
+    // sesion tiene una sala asignada (tupla <Curso,Profesor,Ramo,Sala>), esta restriccion
+    // aplica siempre, no solo a recursos escasos como el gimnasio.
+    private Constraint salaSinChoque(ConstraintFactory factory) {
         return factory.forEachUniquePair(SesionRamo.class,
-                        Joiners.equal(s -> s.getRamo().getRequiredRoom()),
+                        Joiners.equal(s -> s.getRamo().getSala()),
                         Joiners.equal(SesionRamo::getTimeslot))
-                .filter((s1, s2) -> s1.getRamo().getRequiredRoom() != null)
                 .penalize(HardSoftScore.ONE_HARD)
-                .asConstraint("Sala compartida sin choque");
+                .asConstraint("Sala sin choque de horario");
     }
 
     // La sesion debe caer en un TimeSlot donde el profesor este disponible segun su contrato.

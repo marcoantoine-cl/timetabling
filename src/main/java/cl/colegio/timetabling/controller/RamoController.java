@@ -81,8 +81,9 @@ public class RamoController {
         if (r.getProfesorId() == null || !profesorRepository.existe(r.getProfesorId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "profesorId invalido o inexistente: " + r.getProfesorId());
         }
-        if (r.getSalaId() != null && !salaRepository.existe(r.getSalaId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "salaId inexistente: " + r.getSalaId());
+        if (r.getSalaId() == null || !salaRepository.existe(r.getSalaId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "salaId invalido o inexistente: " + r.getSalaId() + " (la tupla es <Curso,Profesor,Ramo,Sala>, es obligatoria)");
         }
     }
 }

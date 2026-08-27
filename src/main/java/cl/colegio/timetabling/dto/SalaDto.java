@@ -4,6 +4,7 @@ public class SalaDto {
 
     private String id;
     private String nombre;
+    // Identifica la sala por el color de su puerta. Formato hexadecimal "#RRGGBB".
     private String color;
 
     public String getId() {

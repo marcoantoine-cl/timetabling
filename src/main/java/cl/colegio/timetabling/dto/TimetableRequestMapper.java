@@ -35,7 +35,7 @@ public class TimetableRequestMapper {
         List<Room> rooms = new ArrayList<>();
         if (request.getSalas() != null) {
             for (SalaDto s : request.getSalas()) {
-                Room room = new Room(s.getId(), s.getNombre());
+                Room room = new Room(s.getId(), s.getNombre(), s.getColor());
                 salasPorId.put(s.getId(), room);
                 rooms.add(room);
             }
@@ -78,7 +78,7 @@ public class TimetableRequestMapper {
         for (RamoDto r : request.getRamos()) {
             Curso curso = requerido(cursosPorId, r.getCursoId(), "curso", r.getId());
             Teacher teacher = requerido(profesoresPorId, r.getProfesorId(), "profesor", r.getId());
-            Room sala = r.getSalaId() != null ? requerido(salasPorId, r.getSalaId(), "sala", r.getId()) : null;
+            Room sala = requerido(salasPorId, r.getSalaId(), "sala", r.getId());
 
             Ramo ramo = new Ramo(r.getId(), r.getNombre(), curso, teacher, r.getHorasSemanales(), sala,
                     r.isPreferirManana());
@@ -142,6 +142,10 @@ public class TimetableRequestMapper {
         for (RamoDto r : request.getRamos()) {
             if (r.getHorasSemanales() <= 0) {
                 throw new IllegalArgumentException("El ramo '" + r.getId() + "' debe tener horasSemanales > 0");
+            }
+            if (r.getSalaId() == null || r.getSalaId().isBlank()) {
+                throw new IllegalArgumentException(
+                        "El ramo '" + r.getId() + "' debe tener una sala asignada (salaId) — la tupla es <Curso,Profesor,Ramo,Sala>");
             }
             if (r.getHorariosFijos() != null && r.getHorariosFijos().size() > r.getHorasSemanales()) {
                 throw new IllegalArgumentException(

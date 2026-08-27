@@ -86,11 +86,16 @@ duras cumplidas, con N puntos de penalización blanda).
   (en producción vendría de configuración del colegio, no hardcodeado).
 - `Teacher`: guarda el conjunto de `TimeSlot` en que **no** está disponible
   (por contrato). Vacío = disponible siempre.
-- `Room`: solo se usa para recursos compartidos y escasos (ej. el gimnasio).
-  Las clases normales de un curso no usan `Room`: el conflicto de curso ya lo
-  resuelve la restricción "un curso, un ramo a la vez".
-- `Curso`, `Ramo`: la terna curso/ramo/profesor es un dato de entrada fijo,
-  **no** algo que el solver decida (tal como pediste, no cambia en el semestre).
+- `Room`: sala física, identificada por el color de su puerta (`color`,
+  hexadecimal `#RRGGBB`).
+- `Curso`, `Ramo`: la tupla **`<Curso, Profesor, Ramo, Sala>`** es un dato de
+  entrada fijo, **no** algo que el solver decida. Cada ramo tiene **siempre**
+  una sala asignada (obligatoria, no solo para recursos escasos como el
+  gimnasio) — dos ramos NUNCA pueden coincidir en la misma sala al mismo
+  tiempo, sea esa sala compartida entre cursos o la sala base de un curso.
+  Un mismo profesor puede dictar varios ramos distintos a un mismo curso (ej.
+  Historia, Orientación Vocacional y PAES); no hay restricción de unicidad
+  sobre (curso, profesor).
 - `SesionRamo` (`@PlanningEntity`): una hora suelta de un ramo. Un ramo de 6
   horas semanales genera 6 `SesionRamo` independientes. Es la única variable
   de planificación (`timeslot`) que el solver mueve.
@@ -102,7 +107,8 @@ duras cumplidas, con N puntos de penalización blanda).
 **Duras (hard, no negociables):**
 1. Un profesor no puede tener dos sesiones al mismo tiempo.
 2. Un curso no puede tener dos ramos al mismo tiempo.
-3. Dos ramos que requieren la misma sala compartida (gimnasio) no pueden coincidir.
+3. Dos ramos no pueden coincidir en la misma sala al mismo tiempo (sala
+   obligatoria y única por ramo, tupla `<Curso,Profesor,Ramo,Sala>`).
 4. Una sesión no puede caer en un slot donde el profesor no está disponible.
 5. Los ramos con horario obligatorio predefinido (ej. Orientación jueves
    bloque 1) deben respetarlo exactamente.

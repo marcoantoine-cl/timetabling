@@ -151,18 +151,7 @@ public class TimetableController {
         List<Map<String, Object>> sesiones = solucion.getSesionRamoList().stream()
                 .sorted(Comparator.comparingInt((SesionRamo s) -> s.getTimeslot().getDayOfWeek())
                         .thenComparingInt(s -> s.getTimeslot().getBlock()))
-                .map(s -> Map.<String, Object>of(
-                        "ramoId", s.getRamo().getId(),
-                        "indiceSesion", s.getIndiceSesion(),
-                        "cursoId", s.getRamo().getCurso().getId(),
-                        "curso", s.getRamo().getCurso().getName(),
-                        "profesorId", s.getRamo().getTeacher().getId(),
-                        "ramo", s.getRamo().getName(),
-                        "profesor", s.getRamo().getTeacher().getName(),
-                        "dia", s.getTimeslot().getDayOfWeek(),
-                        "bloque", s.getTimeslot().getBlock(),
-                        "movida", s.isMovida()
-                ))
+                .map(this::aMapaSesion)
                 .collect(Collectors.toList());
 
         Map<String, Object> respuesta = new java.util.HashMap<>();
@@ -170,5 +159,23 @@ public class TimetableController {
         respuesta.put("factible", factible);
         respuesta.put("sesiones", sesiones);
         return respuesta;
+    }
+
+    private Map<String, Object> aMapaSesion(SesionRamo s) {
+        Map<String, Object> mapa = new java.util.LinkedHashMap<>();
+        mapa.put("ramoId", s.getRamo().getId());
+        mapa.put("indiceSesion", s.getIndiceSesion());
+        mapa.put("cursoId", s.getRamo().getCurso().getId());
+        mapa.put("curso", s.getRamo().getCurso().getName());
+        mapa.put("profesorId", s.getRamo().getTeacher().getId());
+        mapa.put("ramo", s.getRamo().getName());
+        mapa.put("profesor", s.getRamo().getTeacher().getName());
+        mapa.put("salaId", s.getRamo().getSala().getId());
+        mapa.put("sala", s.getRamo().getSala().getName());
+        mapa.put("salaColor", s.getRamo().getSala().getColor());
+        mapa.put("dia", s.getTimeslot().getDayOfWeek());
+        mapa.put("bloque", s.getTimeslot().getBlock());
+        mapa.put("movida", s.isMovida());
+        return mapa;
     }
 }

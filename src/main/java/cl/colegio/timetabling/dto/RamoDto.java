@@ -9,7 +9,10 @@ public class RamoDto {
     private String cursoId;
     private String profesorId;
     private int horasSemanales;
-    private String salaId; // opcional: solo si compite por un recurso compartido (ej. gimnasio)
+    // Obligatoria: la tupla del modelo es <Curso,Profesor,Ramo,Sala>. Cada ramo se dicta
+    // siempre en la misma sala (se identifica por el color de su puerta), sea o no un
+    // recurso compartido entre cursos (aula propia, gimnasio, laboratorio, etc).
+    private String salaId;
 
     // Opcional: horarios obligatorios predefinidos, en orden, para las primeras N sesiones
     // de este ramo (ej. Orientacion -> [{dia:4, bloque:1}]). Las sesiones restantes,
