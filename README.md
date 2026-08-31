@@ -21,9 +21,11 @@ reemplazar `InMemoryRepository` por JPA/JDBC, los controllers no cambian).
 
 - `GET/POST /api/profesores`, `GET/PUT/DELETE /api/profesores/{id}`
 - `GET/POST /api/cursos`, `GET/PUT/DELETE /api/cursos/{id}`
-- `GET/POST /api/salas`, `GET/PUT/DELETE /api/salas/{id}`
+- `GET/POST /api/salas`, `GET/PUT/DELETE /api/salas/{id}` (el universo de
+  salas entre las que el solver elige — no se referencian desde el ramo)
 - `GET/POST /api/ramos`, `GET/PUT/DELETE /api/ramos/{id}` (valida que
-  `cursoId`/`profesorId`/`salaId` existan)
+  `cursoId`/`profesorId` existan; el ramo NO tiene `salaId`, la sala la
+  decide el solver por sesión)
 - `GET/PUT /api/config`: configuracion global (dias, bloquesPorDia, bloques,
   horaCorteManana) — es un singleton, no una lista.
 
@@ -43,25 +45,32 @@ funciona de inmediato sin tener que cargar nada a mano primero.
 - `GET /api/timetable/demo/solve`: resuelve el dataset de ejemplo hardcodeado
   en `DemoDataGenerator` (independiente del CRUD, útil para pruebas rápidas).
 - `POST /api/timetable/solve`: recibe cursos/profesores/ramos en JSON, resuelve
-  DESDE CERO (ignora cualquier posición previa) y devuelve el horario.
-  Campos nuevos relevantes en el request: `bloques` (regla 1), `horaCorteManana`
-  (regla 5), `Profesor.maxHorasSemanales/horaIngreso/horaSalida` (reglas 2 y 3),
+  DESDE CERO (ignora cualquier posición previa) y devuelve el horario,
+  incluyendo la sala que el solver eligió para cada sesión. Campos nuevos
+  relevantes en el request: `bloques` (regla 1), `horaCorteManana` (regla 5),
+  `Profesor.maxHorasSemanales/horaIngreso/horaSalida` (reglas 2 y 3),
   `Curso.horaSalidaMaxima` (regla 4), `Ramo.preferirManana` (regla 5). Todos
-  opcionales — si se omiten, el comportamiento es igual al de antes de estas reglas.
+  opcionales — si se omiten, el comportamiento es igual al de antes de estas
+  reglas. **`salas` es obligatorio** (al menos una): es el universo de
+  opciones para la variable de planificación `sala`.
 - `POST /api/timetable/verificar`: recibe un horario **ya armado** (cada ramo
-  con `sesionesActuales` completas) y **solo calcula el score** — no mueve nada.
-  Sirve para precargar un horario existente (ej. migrado desde otro sistema) y
-  saber de inmediato si es factible, y si no, exactamente qué restricciones se
-  violan (`detalle`: nombre de la restricción, score, cantidad de ocurrencias).
-  Usa `ScoreManager` de OptaPlanner, no el solver — es prácticamente instantáneo.
+  con `sesionesActuales` completas — dia, bloque **y salaId** de cada sesión)
+  y **solo calcula el score** — no mueve nada. Sirve para precargar un
+  horario existente (ej. migrado desde otro sistema) y saber de inmediato si
+  es factible, y si no, exactamente qué restricciones se violan (`detalle`:
+  nombre de la restricción, score, cantidad de ocurrencias). Usa
+  `ScoreManager` de OptaPlanner, no el solver — es prácticamente instantáneo.
 - `POST /api/timetable/mover-sesion`: recibe el horario actual (con
-  `sesionesActuales`) más `{ ramoId, indiceSesion, nuevoSlot: {dia, bloque} }`.
-  Ancla esa sesión en su nueva posición (`@PlanningPin`) y vuelve a resolver
-  — un re-solve corto que solo toca lo estrictamente necesario para arreglar
-  los choques que ese cambio haya provocado (ver la restricción blanda
-  "Mantener asignación original salvo necesidad" en `TimetableConstraintProvider`).
-  La respuesta marca `"movida": true` en cada sesión que terminó en una
-  posición distinta a la que tenía antes de este cambio.
+  `sesionesActuales`) más `{ ramoId, indiceSesion, nuevoSlot: {dia, bloque,
+  salaId} }`. `salaId` es **opcional** en `nuevoSlot`: si se omite, la sesión
+  mantiene la sala que ya tenía y solo cambia de horario. Ancla esa sesión en
+  su nueva posición completa (`@PlanningPin`) y vuelve a resolver — un
+  re-solve corto que solo toca lo estrictamente necesario para arreglar los
+  choques que ese cambio haya provocado (ver las restricciones blandas
+  "Mantener horario original" y "Mantener sala original" en
+  `TimetableConstraintProvider`). La respuesta marca `"movida": true` en cada
+  sesión que terminó en una posición (horario o sala) distinta a la que
+  tenía antes de este cambio.
 
 ## Cómo correr
 
@@ -86,23 +95,31 @@ duras cumplidas, con N puntos de penalización blanda).
   (en producción vendría de configuración del colegio, no hardcodeado).
 - `Teacher`: guarda el conjunto de `TimeSlot` en que **no** está disponible
   (por contrato). Vacío = disponible siempre.
-- `Room`: solo se usa para recursos compartidos y escasos (ej. el gimnasio).
-  Las clases normales de un curso no usan `Room`: el conflicto de curso ya lo
-  resuelve la restricción "un curso, un ramo a la vez".
-- `Curso`, `Ramo`: la terna curso/ramo/profesor es un dato de entrada fijo,
-  **no** algo que el solver decida (tal como pediste, no cambia en el semestre).
+- `Room`: sala física, identificada por el color de su puerta (`color`,
+  hexadecimal `#RRGGBB`).
+- `Curso`, `Ramo`: la terna **`<Curso, Profesor, Ramo>`** es un dato de entrada
+  fijo, **no** algo que el solver decida. Un mismo profesor puede dictar varios
+  ramos distintos a un mismo curso (ej. Historia, Orientación Vocacional y
+  PAES); no hay restricción de unicidad sobre (curso, profesor).
 - `SesionRamo` (`@PlanningEntity`): una hora suelta de un ramo. Un ramo de 6
-  horas semanales genera 6 `SesionRamo` independientes. Es la única variable
-  de planificación (`timeslot`) que el solver mueve.
+  horas semanales genera 6 `SesionRamo` independientes. Tiene **DOS** variables
+  de planificación que el solver decide de forma independiente por sesión:
+  `timeslot` (cuándo) y `sala` (dónde). La sala **no** es fija por ramo — un
+  mismo ramo puede terminar con sesiones en salas distintas según el día (ej.
+  lunes en Sala 101, jueves en Sala 102); el solver la elige libremente entre
+  todas las salas cargadas, igual que elige el horario.
 - `Timetable` (`@PlanningSolution`): contenedor de todo — problem facts +
-  entidades de planificación + score.
+  entidades de planificación + score. La lista de salas (`roomList`) es tanto
+  problem fact como `@ValueRangeProvider` — el universo de opciones entre las
+  que el solver elige para la variable `sala`.
 
 ## Restricciones implementadas (`TimetableConstraintProvider`)
 
 **Duras (hard, no negociables):**
 1. Un profesor no puede tener dos sesiones al mismo tiempo.
 2. Un curso no puede tener dos ramos al mismo tiempo.
-3. Dos ramos que requieren la misma sala compartida (gimnasio) no pueden coincidir.
+3. Dos sesiones no pueden coincidir en la misma sala al mismo tiempo (la sala
+   es una variable de planificación por sesión, no un dato fijo del ramo).
 4. Una sesión no puede caer en un slot donde el profesor no está disponible.
 5. Los ramos con horario obligatorio predefinido (ej. Orientación jueves
    bloque 1) deben respetarlo exactamente.

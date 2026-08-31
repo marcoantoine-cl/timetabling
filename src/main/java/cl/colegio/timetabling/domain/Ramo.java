@@ -2,10 +2,15 @@ package cl.colegio.timetabling.domain;
 
 /**
  * Ramo (asignatura) dictado a un Curso especifico por un Teacher especifico.
- * La terna (curso, ramo, profesor) es fija durante todo el semestre: no es algo
+ * La terna (curso, profesor, ramo) es fija durante todo el semestre: no es algo
  * que el solver decida, es un dato de entrada.
- * Lo que el solver SI decide es en que TimeSlot(s) se dicta cada una de las
- * "weeklyHours" sesiones de este ramo (ver SesionRamo).
+ * Lo que el solver SI decide es EN QUE TimeSlot y EN QUE Sala se dicta cada una
+ * de las "weeklyHours" sesiones de este ramo (ver SesionRamo) — la sala NO es
+ * fija por ramo: un mismo ramo puede dictarse en salas distintas segun el dia
+ * (ej. lunes en Sala 101, jueves en Sala 102), el solver decide libremente.
+ *
+ * Un mismo profesor puede dictar varios ramos distintos a un mismo curso (ej. Historia,
+ * Orientacion Vocacional y PAES); no hay restriccion de unicidad sobre (curso, profesor).
  */
 public class Ramo {
 
@@ -14,7 +19,6 @@ public class Ramo {
     private Curso curso;
     private Teacher teacher;
     private int weeklyHours;     // cantidad de bloques de 45 min a la semana
-    private Room requiredRoom;   // null si se dicta en la sala base del curso; no-null si compite por un recurso compartido (ej. gimnasio)
 
     // Regla 5: preferencia por manana para ciertos ramos (ej. Lenguaje, Matematica).
     private boolean preferirManana;
@@ -22,18 +26,17 @@ public class Ramo {
     public Ramo() {
     }
 
-    public Ramo(String id, String name, Curso curso, Teacher teacher, int weeklyHours, Room requiredRoom) {
-        this(id, name, curso, teacher, weeklyHours, requiredRoom, false);
+    public Ramo(String id, String name, Curso curso, Teacher teacher, int weeklyHours) {
+        this(id, name, curso, teacher, weeklyHours, false);
     }
 
-    public Ramo(String id, String name, Curso curso, Teacher teacher, int weeklyHours, Room requiredRoom,
+    public Ramo(String id, String name, Curso curso, Teacher teacher, int weeklyHours,
                 boolean preferirManana) {
         this.id = id;
         this.name = name;
         this.curso = curso;
         this.teacher = teacher;
         this.weeklyHours = weeklyHours;
-        this.requiredRoom = requiredRoom;
         this.preferirManana = preferirManana;
     }
 
@@ -55,10 +58,6 @@ public class Ramo {
 
     public int getWeeklyHours() {
         return weeklyHours;
-    }
-
-    public Room getRequiredRoom() {
-        return requiredRoom;
     }
 
     public boolean isPreferirManana() {

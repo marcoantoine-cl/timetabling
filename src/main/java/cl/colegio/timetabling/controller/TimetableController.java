@@ -1,5 +1,6 @@
 package cl.colegio.timetabling.controller;
 
+import cl.colegio.timetabling.domain.Room;
 import cl.colegio.timetabling.domain.SesionRamo;
 import cl.colegio.timetabling.domain.Timetable;
 import cl.colegio.timetabling.domain.TimeSlot;
@@ -108,10 +109,20 @@ public class TimetableController {
         Timetable horarioActual = mapearOFallar(request.getHorario());
         TimeSlot nuevoSlot = new TimeSlot(request.getNuevoSlot().getDia(), request.getNuevoSlot().getBloque());
 
+        Room nuevaSala = null;
+        String nuevaSalaId = request.getNuevoSlot().getSalaId();
+        if (nuevaSalaId != null && !nuevaSalaId.isBlank()) {
+            nuevaSala = horarioActual.getRoomList().stream()
+                    .filter(r -> r.getId().equals(nuevaSalaId))
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Sala inexistente: " + nuevaSalaId));
+        }
+
         Timetable resultado;
         try {
             resultado = timetableService.moverSesion(
-                    horarioActual, request.getRamoId(), request.getIndiceSesion(), nuevoSlot);
+                    horarioActual, request.getRamoId(), request.getIndiceSesion(), nuevoSlot, nuevaSala);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
@@ -126,7 +137,8 @@ public class TimetableController {
         }
     }
 
-    // /verificar necesita el horario COMPLETO (no puede calcular el score de sesiones sin ubicar).
+    // /verificar necesita el horario COMPLETO (dia, bloque Y sala de cada sesion; no puede
+    // calcular el score de sesiones sin ubicar).
     private void validarHorarioCompleto(TimetableRequest request) {
         if (request.getRamos() == null) {
             return;
@@ -136,8 +148,16 @@ public class TimetableController {
             if (cantidadActuales < r.getHorasSemanales()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Para verificar un horario, el ramo '" + r.getId()
-                                + "' debe traer sesionesActuales para las " + r.getHorasSemanales()
-                                + " horas semanales (trae " + cantidadActuales + ")");
+                                + "' debe traer sesionesActuales (con dia, bloque y salaId) para las "
+                                + r.getHorasSemanales() + " horas semanales (trae " + cantidadActuales + ")");
+            }
+            for (int i = 0; i < r.getHorasSemanales(); i++) {
+                String salaId = r.getSesionesActuales().get(i).getSalaId();
+                if (salaId == null || salaId.isBlank()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Para verificar un horario, sesionesActuales[" + i + "] del ramo '" + r.getId()
+                                    + "' debe traer salaId (la sala tambien es parte del horario a verificar)");
+                }
             }
         }
     }
@@ -151,18 +171,7 @@ public class TimetableController {
         List<Map<String, Object>> sesiones = solucion.getSesionRamoList().stream()
                 .sorted(Comparator.comparingInt((SesionRamo s) -> s.getTimeslot().getDayOfWeek())
                         .thenComparingInt(s -> s.getTimeslot().getBlock()))
-                .map(s -> Map.<String, Object>of(
-                        "ramoId", s.getRamo().getId(),
-                        "indiceSesion", s.getIndiceSesion(),
-                        "cursoId", s.getRamo().getCurso().getId(),
-                        "curso", s.getRamo().getCurso().getName(),
-                        "profesorId", s.getRamo().getTeacher().getId(),
-                        "ramo", s.getRamo().getName(),
-                        "profesor", s.getRamo().getTeacher().getName(),
-                        "dia", s.getTimeslot().getDayOfWeek(),
-                        "bloque", s.getTimeslot().getBlock(),
-                        "movida", s.isMovida()
-                ))
+                .map(this::aMapaSesion)
                 .collect(Collectors.toList());
 
         Map<String, Object> respuesta = new java.util.HashMap<>();
@@ -170,5 +179,23 @@ public class TimetableController {
         respuesta.put("factible", factible);
         respuesta.put("sesiones", sesiones);
         return respuesta;
+    }
+
+    private Map<String, Object> aMapaSesion(SesionRamo s) {
+        Map<String, Object> mapa = new java.util.LinkedHashMap<>();
+        mapa.put("ramoId", s.getRamo().getId());
+        mapa.put("indiceSesion", s.getIndiceSesion());
+        mapa.put("cursoId", s.getRamo().getCurso().getId());
+        mapa.put("curso", s.getRamo().getCurso().getName());
+        mapa.put("profesorId", s.getRamo().getTeacher().getId());
+        mapa.put("ramo", s.getRamo().getName());
+        mapa.put("profesor", s.getRamo().getTeacher().getName());
+        mapa.put("salaId", s.getSala().getId());
+        mapa.put("sala", s.getSala().getName());
+        mapa.put("salaColor", s.getSala().getColor());
+        mapa.put("dia", s.getTimeslot().getDayOfWeek());
+        mapa.put("bloque", s.getTimeslot().getBlock());
+        mapa.put("movida", s.isMovida());
+        return mapa;
     }
 }

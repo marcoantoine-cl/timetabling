@@ -3,13 +3,14 @@ package cl.colegio.timetabling.dto;
 /**
  * Payload de POST /api/timetable/mover-sesion: el horario actual completo
  * (con sesionesActuales pobladas en cada ramo) mas el movimiento puntual pedido.
+ * nuevoSlot.salaId es opcional: si se omite, la sesion mantiene la sala que ya tenia.
  */
 public class MoverSesionRequest {
 
     private TimetableRequest horario;
     private String ramoId;
     private int indiceSesion;
-    private TimeSlotDto nuevoSlot;
+    private AsignacionSesionDto nuevoSlot;
 
     public TimetableRequest getHorario() {
         return horario;
@@ -35,11 +36,11 @@ public class MoverSesionRequest {
         this.indiceSesion = indiceSesion;
     }
 
-    public TimeSlotDto getNuevoSlot() {
+    public AsignacionSesionDto getNuevoSlot() {
         return nuevoSlot;
     }
 
-    public void setNuevoSlot(TimeSlotDto nuevoSlot) {
+    public void setNuevoSlot(AsignacionSesionDto nuevoSlot) {
         this.nuevoSlot = nuevoSlot;
     }
 }

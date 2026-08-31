@@ -17,6 +17,7 @@ public class Timetable {
     private List<TimeSlot> timeSlotList;
 
     @ProblemFactCollectionProperty
+    @ValueRangeProvider(id = "salaRange")
     private List<Room> roomList;
 
     @ProblemFactCollectionProperty

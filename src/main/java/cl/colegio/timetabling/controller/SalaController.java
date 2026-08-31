@@ -58,12 +58,15 @@ public class SalaController {
         }
     }
 
+    private static final java.util.regex.Pattern FORMATO_COLOR = java.util.regex.Pattern.compile("^#[0-9A-Fa-f]{6}$");
+
     private void validar(SalaDto s) {
         if (s.getNombre() == null || s.getNombre().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La sala debe tener nombre");
         }
-        if (s.getColor() == null || s.getColor().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La sala debe tener color");
+        if (s.getColor() != null && !FORMATO_COLOR.matcher(s.getColor()).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El color debe ser un hexadecimal valido, ej. '#E53935' (recibido: '" + s.getColor() + "')");
         }
     }
 }

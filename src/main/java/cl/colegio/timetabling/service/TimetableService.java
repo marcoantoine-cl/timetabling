@@ -2,6 +2,7 @@ package cl.colegio.timetabling.service;
 
 import org.optaplanner.core.api.solver.SolverJob;
 import org.optaplanner.core.api.solver.SolverManager;
+import cl.colegio.timetabling.domain.Room;
 import cl.colegio.timetabling.domain.SesionRamo;
 import cl.colegio.timetabling.domain.Teacher;
 import cl.colegio.timetabling.domain.TimeSlot;
@@ -69,15 +70,18 @@ public class TimetableService {
     }
 
     /**
-     * Mueve una sesion puntual a un nuevo dia/bloque y re-resuelve para arreglar
-     * cualquier choque que ese cambio haya provocado, tocando lo minimo posible
-     * del resto del horario (ver restriccion "Mantener asignacion original salvo
-     * necesidad" en TimetableConstraintProvider).
+     * Mueve una sesion puntual a un nuevo dia/bloque (y opcionalmente una nueva sala) y
+     * re-resuelve para arreglar cualquier choque que ese cambio haya provocado, tocando lo
+     * minimo posible del resto del horario (ver restricciones "Mantener horario/sala original
+     * salvo necesidad" en TimetableConstraintProvider).
+     *
+     * Si nuevaSala es null, la sesion mantiene la sala que ya tenia (solo cambia de horario).
      *
      * La sesion movida queda "pinned" (@PlanningPin): el solver ya no la va a
-     * volver a mover, es una decision del usuario que se respeta tal cual.
+     * volver a mover (ni de horario ni de sala), es una decision del usuario que se respeta tal cual.
      */
-    public Timetable moverSesion(Timetable horarioActual, String ramoId, int indiceSesion, TimeSlot nuevoSlot) {
+    public Timetable moverSesion(Timetable horarioActual, String ramoId, int indiceSesion,
+                                  TimeSlot nuevoSlot, Room nuevaSala) {
         SesionRamo objetivo = horarioActual.getSesionRamoList().stream()
                 .filter(s -> s.getRamo().getId().equals(ramoId) && s.getIndiceSesion() == indiceSesion)
                 .findFirst()
@@ -92,6 +96,13 @@ public class TimetableService {
 
         objetivo.setTimeslot(nuevoSlot);
         objetivo.setTimeslotOriginal(nuevoSlot); // el cambio manual pasa a ser el nuevo "de referencia"
+
+        if (nuevaSala != null) {
+            objetivo.setSala(nuevaSala);
+            objetivo.setSalaOriginal(nuevaSala);
+        }
+        // si nuevaSala es null, se deja la sala que la sesion ya tenia (viene de sesionesActuales)
+
         objetivo.setPinned(true);
 
         return resolver(horarioActual);

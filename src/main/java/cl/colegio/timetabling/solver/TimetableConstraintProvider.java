@@ -23,7 +23,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 // --- HARD ---
                 profesorSinChoque(factory),
                 cursoSinChoque(factory),
-                salaCompartidaSinChoque(factory),
+                salaSinChoque(factory),
                 profesorDisponible(factory),
                 horarioFijoRespetado(factory),
                 profesorDentroDeVentanaContrato(factory),
@@ -31,7 +31,8 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 // --- SOFT ---
                 balanceCargaDiariaPorCurso(factory),
                 evitarHorasSeguidasExcesivas(factory),
-                preferirMantenerAsignacionOriginal(factory),
+                preferirMantenerHorarioOriginal(factory),
+                preferirMantenerSalaOriginal(factory),
                 preferirRamosEnLaManana(factory)
         };
     }
@@ -78,14 +79,15 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Curso sin choque de horario");
     }
 
-    // Dos ramos que requieren la misma sala compartida (ej. gimnasio) no pueden coincidir.
-    private Constraint salaCompartidaSinChoque(ConstraintFactory factory) {
+    // Dos sesiones NO pueden coincidir en la misma sala al mismo tiempo. La sala es una
+    // variable de planificacion por SESION (no un dato fijo del ramo): un mismo ramo puede
+    // terminar con sesiones en salas distintas segun el dia.
+    private Constraint salaSinChoque(ConstraintFactory factory) {
         return factory.forEachUniquePair(SesionRamo.class,
-                        Joiners.equal(s -> s.getRamo().getRequiredRoom()),
+                        Joiners.equal(SesionRamo::getSala),
                         Joiners.equal(SesionRamo::getTimeslot))
-                .filter((s1, s2) -> s1.getRamo().getRequiredRoom() != null)
                 .penalize(HardSoftScore.ONE_HARD)
-                .asConstraint("Sala compartida sin choque");
+                .asConstraint("Sala sin choque de horario");
     }
 
     // La sesion debe caer en un TimeSlot donde el profesor este disponible segun su contrato.
@@ -126,15 +128,24 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Evitar horas seguidas excesivas");
     }
 
-    // SOFT: al editar un horario ya cargado, preferir no mover una sesion de su posicion
+    // SOFT: al editar un horario ya cargado, preferir no mover una sesion de su horario
     // original salvo que sea necesario para arreglar un choque. Es null (no aplica) cuando
     // se genera un horario desde cero, asi que no afecta el flujo de POST /solve.
     // Peso mayor al de balance/horas-seguidas para que el solver priorice "tocar lo minimo".
-    private Constraint preferirMantenerAsignacionOriginal(ConstraintFactory factory) {
+    private Constraint preferirMantenerHorarioOriginal(ConstraintFactory factory) {
         return factory.forEach(SesionRamo.class)
                 .filter(s -> s.getTimeslotOriginal() != null && !s.getTimeslotOriginal().equals(s.getTimeslot()))
                 .penalize(HardSoftScore.ofSoft(10))
-                .asConstraint("Mantener asignacion original salvo necesidad");
+                .asConstraint("Mantener horario original salvo necesidad");
+    }
+
+    // SOFT: idem, pero para la sala. Al mover una sesion, si se puede resolver un choque
+    // dejandola en la misma sala que tenia, se prefiere eso antes que reasignarle otra sala.
+    private Constraint preferirMantenerSalaOriginal(ConstraintFactory factory) {
+        return factory.forEach(SesionRamo.class)
+                .filter(s -> s.getSalaOriginal() != null && !s.getSalaOriginal().equals(s.getSala()))
+                .penalize(HardSoftScore.ofSoft(10))
+                .asConstraint("Mantener sala original salvo necesidad");
     }
 
     // Regla 5: dar preferencia a que ciertos ramos (Lenguaje, Matematica, etc, segun

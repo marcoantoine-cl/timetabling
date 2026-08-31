@@ -9,18 +9,20 @@ public class RamoDto {
     private String cursoId;
     private String profesorId;
     private int horasSemanales;
-    private String salaId; // opcional: solo si compite por un recurso compartido (ej. gimnasio)
 
     // Opcional: horarios obligatorios predefinidos, en orden, para las primeras N sesiones
     // de este ramo (ej. Orientacion -> [{dia:4, bloque:1}]). Las sesiones restantes,
     // si horasSemanales > horariosFijos.size(), quedan libres para que el solver las ubique.
+    // Nota: fija el HORARIO, no la sala — la sala se sigue decidiendo libremente incluso
+    // para sesiones con horario fijo.
     private List<TimeSlotDto> horariosFijos;
 
-    // Opcional: posicion ACTUAL de cada sesion, para precargar un horario ya existente
-    // (usado por /verificar y /mover-sesion). Si no se entrega, el solver decide todo
-    // desde cero (flujo normal de /solve). Debe tener el mismo largo que horasSemanales
-    // para /verificar; para /mover-sesion representa el estado antes del cambio.
-    private List<TimeSlotDto> sesionesActuales;
+    // Opcional: posicion ACTUAL de cada sesion (dia, bloque Y sala), para precargar un
+    // horario ya existente (usado por /verificar y /mover-sesion). Si no se entrega, el
+    // solver decide todo desde cero (flujo normal de /solve). Debe tener el mismo largo
+    // que horasSemanales para /verificar; para /mover-sesion representa el estado antes
+    // del cambio. La sala NO es fija por ramo: cada sesion puede estar en una sala distinta.
+    private List<AsignacionSesionDto> sesionesActuales;
 
     // Regla 5: dar preferencia a que este ramo se dicte en la manana (ej. Lenguaje, Matematica).
     private boolean preferirManana;
@@ -65,14 +67,6 @@ public class RamoDto {
         this.horasSemanales = horasSemanales;
     }
 
-    public String getSalaId() {
-        return salaId;
-    }
-
-    public void setSalaId(String salaId) {
-        this.salaId = salaId;
-    }
-
     public List<TimeSlotDto> getHorariosFijos() {
         return horariosFijos;
     }
@@ -81,11 +75,11 @@ public class RamoDto {
         this.horariosFijos = horariosFijos;
     }
 
-    public List<TimeSlotDto> getSesionesActuales() {
+    public List<AsignacionSesionDto> getSesionesActuales() {
         return sesionesActuales;
     }
 
-    public void setSesionesActuales(List<TimeSlotDto> sesionesActuales) {
+    public void setSesionesActuales(List<AsignacionSesionDto> sesionesActuales) {
         this.sesionesActuales = sesionesActuales;
     }
 

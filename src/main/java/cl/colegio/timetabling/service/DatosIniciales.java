@@ -40,8 +40,12 @@ public class DatosIniciales implements CommandLineRunner {
         config.setHoraCorteManana("13:00");
         configuracionRepository.guardar(config);
 
-        SalaDto gimnasio = sala("R1", "Gimnasio");
+        SalaDto gimnasio = sala("R1", "Gimnasio", "#FF7043");
+        SalaDto sala101 = sala("R2", "Sala 101", "#4CAF50");
+        SalaDto sala102 = sala("R3", "Sala 102", "#2196F3");
         salaRepository.guardar(gimnasio);
+        salaRepository.guardar(sala101);
+        salaRepository.guardar(sala102);
 
         ProfesorDto juan = profesor("P1", "Juan Perez", null, "08:00", "16:00", 30);
         ProfesorDto ana = profesor("P2", "Ana Soto", List.of(new TimeSlotDto(5, 1), new TimeSlotDto(5, 2),
@@ -57,21 +61,20 @@ public class DatosIniciales implements CommandLineRunner {
         cursoRepository.guardar(iiA);
         cursoRepository.guardar(iiB);
 
-        ramoRepository.guardar(ramo("R-LEN-C1", "Lenguaje", "C1", "P1", 6, null, true, null));
-        ramoRepository.guardar(ramo("R-MAT-C1", "Matematica", "C1", "P2", 6, null, true, null));
-        ramoRepository.guardar(ramo("R-ORI-C1", "Orientacion", "C1", "P1", 1, null, false,
+        // profJuan dicta tanto Lenguaje como Orientacion a II A: un mismo profesor puede
+        // dictar varios ramos a un mismo curso. La sala NO se fija aqui: el solver la asigna
+        // por sesion (ver SesionRamo.sala) entre las salas cargadas arriba.
+        ramoRepository.guardar(ramo("R-LEN-C1", "Lenguaje", "C1", "P1", 6, true, null));
+        ramoRepository.guardar(ramo("R-MAT-C1", "Matematica", "C1", "P2", 6, true, null));
+        ramoRepository.guardar(ramo("R-ORI-C1", "Orientacion", "C1", "P1", 1, false,
                 List.of(new TimeSlotDto(4, 1))));
-        ramoRepository.guardar(ramo("R-EDF-C1", "Educacion Fisica", "C1", "P3", 2, "R1", false, null));
+        ramoRepository.guardar(ramo("R-EDF-C1", "Educacion Fisica", "C1", "P3", 2, false, null));
 
-        ramoRepository.guardar(ramo("R-LEN-C2", "Lenguaje", "C2", "P2", 6, null, true, null));
-        ramoRepository.guardar(ramo("R-MAT-C2", "Matematica", "C2", "P1", 6, null, true, null));
-        ramoRepository.guardar(ramo("R-ORI-C2", "Orientacion", "C2", "P2", 1, null, false,
+        ramoRepository.guardar(ramo("R-LEN-C2", "Lenguaje", "C2", "P2", 6, true, null));
+        ramoRepository.guardar(ramo("R-MAT-C2", "Matematica", "C2", "P1", 6, true, null));
+        ramoRepository.guardar(ramo("R-ORI-C2", "Orientacion", "C2", "P2", 1, false,
                 List.of(new TimeSlotDto(4, 1))));
-        ramoRepository.guardar(ramo("R-EDF-C2", "Educacion Fisica", "C2", "P3", 2, "R1", false, null));
-    }
-
-    private SalaDto sala(String id, String nombre) {
-        return sala(id, nombre, "#6c757d");
+        ramoRepository.guardar(ramo("R-EDF-C2", "Educacion Fisica", "C2", "P3", 2, false, null));
     }
 
     private SalaDto sala(String id, String nombre, String color) {
@@ -103,14 +106,13 @@ public class DatosIniciales implements CommandLineRunner {
     }
 
     private RamoDto ramo(String id, String nombre, String cursoId, String profesorId, int horasSemanales,
-                          String salaId, boolean preferirManana, List<TimeSlotDto> horariosFijos) {
+                          boolean preferirManana, List<TimeSlotDto> horariosFijos) {
         RamoDto r = new RamoDto();
         r.setId(id);
         r.setNombre(nombre);
         r.setCursoId(cursoId);
         r.setProfesorId(profesorId);
         r.setHorasSemanales(horasSemanales);
-        r.setSalaId(salaId);
         r.setPreferirManana(preferirManana);
         r.setHorariosFijos(horariosFijos);
         return r;

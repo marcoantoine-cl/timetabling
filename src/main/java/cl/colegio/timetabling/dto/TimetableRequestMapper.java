@@ -18,7 +18,7 @@ public class TimetableRequestMapper {
         validar(request);
 
         Map<Integer, BloqueHorarioDto> tablaBloques = tablaDeBloques(request);
-        LocalTime horaCorteManana = request.getHoraCorteManana() != null
+        LocalTime horaCorteManana = !esVacio(request.getHoraCorteManana())
                 ? parsearHora(request.getHoraCorteManana(), "horaCorteManana")
                 : HORA_CORTE_MANANA_DEFAULT;
 
@@ -35,7 +35,7 @@ public class TimetableRequestMapper {
         List<Room> rooms = new ArrayList<>();
         if (request.getSalas() != null) {
             for (SalaDto s : request.getSalas()) {
-                Room room = new Room(s.getId(), s.getNombre());
+                Room room = new Room(s.getId(), s.getNombre(), s.getColor());
                 salasPorId.put(s.getId(), room);
                 rooms.add(room);
             }
@@ -50,9 +50,9 @@ public class TimetableRequestMapper {
                     noDisponible.add(new TimeSlot(ts.getDia(), ts.getBloque()));
                 }
             }
-            LocalTime horaIngreso = p.getHoraIngreso() != null
+            LocalTime horaIngreso = !esVacio(p.getHoraIngreso())
                     ? parsearHora(p.getHoraIngreso(), "profesor '" + p.getId() + "'.horaIngreso") : null;
-            LocalTime horaSalida = p.getHoraSalida() != null
+            LocalTime horaSalida = !esVacio(p.getHoraSalida())
                     ? parsearHora(p.getHoraSalida(), "profesor '" + p.getId() + "'.horaSalida") : null;
 
             Teacher teacher = new Teacher(p.getId(), p.getNombre(), noDisponible,
@@ -64,7 +64,7 @@ public class TimetableRequestMapper {
         Map<String, Curso> cursosPorId = new HashMap<>();
         List<Curso> cursos = new ArrayList<>();
         for (CursoDto c : request.getCursos()) {
-            LocalTime horaSalidaMaxima = c.getHoraSalidaMaxima() != null
+            LocalTime horaSalidaMaxima = !esVacio(c.getHoraSalidaMaxima())
                     ? parsearHora(c.getHoraSalidaMaxima(), "curso '" + c.getId() + "'.horaSalidaMaxima") : null;
             Curso curso = new Curso(c.getId(), c.getNombre(), horaSalidaMaxima);
             cursosPorId.put(c.getId(), curso);
@@ -78,25 +78,32 @@ public class TimetableRequestMapper {
         for (RamoDto r : request.getRamos()) {
             Curso curso = requerido(cursosPorId, r.getCursoId(), "curso", r.getId());
             Teacher teacher = requerido(profesoresPorId, r.getProfesorId(), "profesor", r.getId());
-            Room sala = r.getSalaId() != null ? requerido(salasPorId, r.getSalaId(), "sala", r.getId()) : null;
 
-            Ramo ramo = new Ramo(r.getId(), r.getNombre(), curso, teacher, r.getHorasSemanales(), sala,
+            Ramo ramo = new Ramo(r.getId(), r.getNombre(), curso, teacher, r.getHorasSemanales(),
                     r.isPreferirManana());
             ramos.add(ramo);
 
             horasAsignadasPorProfesor.merge(teacher.getId(), r.getHorasSemanales(), Integer::sum);
 
             List<TimeSlotDto> fijos = r.getHorariosFijos() != null ? r.getHorariosFijos() : List.of();
-            List<TimeSlotDto> actuales = r.getSesionesActuales() != null ? r.getSesionesActuales() : List.of();
+            List<AsignacionSesionDto> actuales = r.getSesionesActuales() != null ? r.getSesionesActuales() : List.of();
             for (int i = 0; i < r.getHorasSemanales(); i++) {
                 TimeSlot fijo = i < fijos.size()
                         ? new TimeSlot(fijos.get(i).getDia(), fijos.get(i).getBloque())
                         : null;
                 SesionRamo sesion = new SesionRamo(r.getId() + "-S" + i, ramo, i, fijo);
                 if (i < actuales.size()) {
-                    TimeSlot actual = conHoraDeReloj(actuales.get(i).getDia(), actuales.get(i).getBloque(), plantillaPorBloque);
+                    AsignacionSesionDto actualDto = actuales.get(i);
+                    TimeSlot actual = conHoraDeReloj(actualDto.getDia(), actualDto.getBloque(), plantillaPorBloque);
                     sesion.setTimeslot(actual);
                     sesion.setTimeslotOriginal(actual);
+
+                    if (!esVacio(actualDto.getSalaId())) {
+                        Room salaActual = requerido(salasPorId, actualDto.getSalaId(),
+                                "sala de sesionesActuales", r.getId() + "-S" + i);
+                        sesion.setSala(salaActual);
+                        sesion.setSalaOriginal(salaActual);
+                    }
                 }
                 sesiones.add(sesion);
             }
@@ -139,6 +146,10 @@ public class TimetableRequestMapper {
         if (request.getRamos() == null || request.getRamos().isEmpty()) {
             throw new IllegalArgumentException("Debe indicar al menos un ramo");
         }
+        if (request.getSalas() == null || request.getSalas().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Debe indicar al menos una sala — la sala es parte de lo que el solver debe asignar a cada sesion");
+        }
         for (RamoDto r : request.getRamos()) {
             if (r.getHorasSemanales() <= 0) {
                 throw new IllegalArgumentException("El ramo '" + r.getId() + "' debe tener horasSemanales > 0");
@@ -154,6 +165,10 @@ public class TimetableRequestMapper {
                 if (!numeros.add(b.getNumero())) {
                     throw new IllegalArgumentException("El bloque numero " + b.getNumero() + " esta duplicado en 'bloques'");
                 }
+                if (esVacio(b.getHoraInicio()) || esVacio(b.getHoraFin())) {
+                    throw new IllegalArgumentException(
+                            "El bloque numero " + b.getNumero() + " debe traer horaInicio y horaFin (no vacios)");
+                }
             }
             for (int i = 1; i <= request.getBloquesPorDia(); i++) {
                 if (!numeros.contains(i)) {
@@ -162,6 +177,11 @@ public class TimetableRequestMapper {
                 }
             }
         }
+    }
+
+    /** true si el valor es null, vacio, o solo espacios en blanco — se trata como "no informado". */
+    private boolean esVacio(String valor) {
+        return valor == null || valor.isBlank();
     }
 
     // Regla 2: valida que ningun profesor supere su maximo de horas semanales frente a curso.

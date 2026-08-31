@@ -8,8 +8,8 @@ import java.util.*;
 
 /**
  * Genera un dataset pequeño de ejemplo para validar el motor end-to-end,
- * incluyendo las reglas de ventana horaria, hora de salida por curso y
- * preferencia de manana.
+ * incluyendo las reglas de ventana horaria, hora de salida por curso,
+ * preferencia de manana y sala como variable de planificacion por sesion.
  * En un caso real, este dataset vendria de la base de datos / de un formulario de carga.
  */
 @Component
@@ -24,8 +24,11 @@ public class DemoDataGenerator {
     public Timetable generarProblema() {
         List<TimeSlot> timeSlots = generarTimeSlots();
 
-        Room gimnasio = new Room("R1", "Gimnasio");
-        List<Room> rooms = List.of(gimnasio);
+        // Las salas se identifican por el color de su puerta (codigo hexadecimal).
+        Room gimnasio = new Room("R1", "Gimnasio", "#FF7043");
+        Room sala101 = new Room("R2", "Sala 101", "#4CAF50"); // sala base de II A
+        Room sala102 = new Room("R3", "Sala 102", "#2196F3"); // sala base de II B
+        List<Room> rooms = List.of(gimnasio, sala101, sala102);
 
         // Regla 3: ventana horaria de contrato. Regla 2: maximo de horas semanales.
         Teacher profJuan = new Teacher("P1", "Juan Perez", new HashSet<>(),
@@ -42,16 +45,20 @@ public class DemoDataGenerator {
         Curso iiB = new Curso("C2", "II B", LocalTime.of(14, 0));
         List<Curso> cursos = List.of(iiA, iiB);
 
+        // Un mismo profesor puede dictar varios ramos a un mismo curso: aqui profJuan
+        // dicta tanto Lenguaje como Orientacion a II A; no hay restriccion de unicidad
+        // sobre (curso, profesor). La sala NO se fija aqui: es una variable de planificacion
+        // por sesion (ver SesionRamo.sala), el solver la elige entre "rooms" arriba.
         // Regla 5: Lenguaje y Matematica con preferencia de manana (ultimo parametro = true)
-        Ramo lenguajeIIA = new Ramo("R-LEN-C1", "Lenguaje", iiA, profJuan, 6, null, true);
-        Ramo matematicaIIA = new Ramo("R-MAT-C1", "Matematica", iiA, profAna, 6, null, true);
-        Ramo orientacionIIA = new Ramo("R-ORI-C1", "Orientacion", iiA, profJuan, 1, null); // horario fijo
-        Ramo edFisicaIIA = new Ramo("R-EDF-C1", "Educacion Fisica", iiA, profLuis, 2, gimnasio);
+        Ramo lenguajeIIA = new Ramo("R-LEN-C1", "Lenguaje", iiA, profJuan, 6, true);
+        Ramo matematicaIIA = new Ramo("R-MAT-C1", "Matematica", iiA, profAna, 6, true);
+        Ramo orientacionIIA = new Ramo("R-ORI-C1", "Orientacion", iiA, profJuan, 1); // horario fijo
+        Ramo edFisicaIIA = new Ramo("R-EDF-C1", "Educacion Fisica", iiA, profLuis, 2);
 
-        Ramo lenguajeIIB = new Ramo("R-LEN-C2", "Lenguaje", iiB, profAna, 6, null, true);
-        Ramo matematicaIIB = new Ramo("R-MAT-C2", "Matematica", iiB, profJuan, 6, null, true);
-        Ramo orientacionIIB = new Ramo("R-ORI-C2", "Orientacion", iiB, profAna, 1, null); // horario fijo
-        Ramo edFisicaIIB = new Ramo("R-EDF-C2", "Educacion Fisica", iiB, profLuis, 2, gimnasio);
+        Ramo lenguajeIIB = new Ramo("R-LEN-C2", "Lenguaje", iiB, profAna, 6, true);
+        Ramo matematicaIIB = new Ramo("R-MAT-C2", "Matematica", iiB, profJuan, 6, true);
+        Ramo orientacionIIB = new Ramo("R-ORI-C2", "Orientacion", iiB, profAna, 1); // horario fijo
+        Ramo edFisicaIIB = new Ramo("R-EDF-C2", "Educacion Fisica", iiB, profLuis, 2);
 
         List<Ramo> ramos = List.of(lenguajeIIA, matematicaIIA, orientacionIIA, edFisicaIIA,
                 lenguajeIIB, matematicaIIB, orientacionIIB, edFisicaIIB);

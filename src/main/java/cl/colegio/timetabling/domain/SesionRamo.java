@@ -10,10 +10,14 @@ import org.optaplanner.core.api.domain.variable.PlanningVariable;
  * Un ramo con weeklyHours=4 genera 4 instancias de SesionRamo (bloques sueltos,
  * no agrupados en franjas), cada una con indice 0..3 solo para trazabilidad.
  *
- * El solver decide el valor de "timeslot" para cada SesionRamo.
+ * El solver decide DOS variables de planificacion independientes por sesion:
+ * "timeslot" (cuando) y "sala" (donde). Un mismo ramo puede terminar con sesiones
+ * en salas distintas segun el dia (ej. lunes en Sala 101, jueves en Sala 102) —
+ * la sala NO es un dato fijo, es parte de lo que el solver optimiza, igual que el horario.
+ *
  * Si "fixedTimeSlot" viene informado (ramo con horario obligatorio predefinido,
- * ej. Orientacion jueves bloque 1), esta sesion queda anclada (ver ConstraintProvider,
- * regla horarioFijoRespetado) y en la practica el solver no la movera de ahi.
+ * ej. Orientacion jueves bloque 1), esta sesion queda anclada en el TIEMPO (ver
+ * ConstraintProvider, regla horarioFijoRespetado) pero la sala se sigue decidiendo libremente.
  */
 @PlanningEntity
 public class SesionRamo {
@@ -27,19 +31,24 @@ public class SesionRamo {
     // Si no es null, esta sesion tiene horario obligatorio predefinido (hard constraint).
     private TimeSlot fixedTimeSlot;
 
-    // Snapshot del timeslot "de referencia" (el horario ya cargado / el ultimo que el usuario
-    // dejo asi a proposito). Se usa SOLO por la restriccion blanda de estabilidad: si esta seteado,
-    // el solver prefiere no mover la sesion de ahi salvo que sea necesario para resolver un choque.
-    // Es null en el flujo de generacion desde cero (POST /solve), por eso no interfiere ahi.
+    // Snapshots "de referencia" (el horario ya cargado / lo ultimo que el usuario dejo asi
+    // a proposito). Se usan SOLO por las restricciones blandas de estabilidad: si estan
+    // seteados, el solver prefiere no mover la sesion de ahi (ni de horario ni de sala)
+    // salvo que sea necesario para resolver un choque. Son null en el flujo de generacion
+    // desde cero (POST /solve), por eso no interfieren ahi.
     private TimeSlot timeslotOriginal;
+    private Room salaOriginal;
 
-    // Si esta en true, el solver NUNCA mueve esta sesion (se usa para anclar el cambio manual
-    // que el usuario acaba de pedir en POST /mover-sesion).
+    // Si esta en true, el solver NUNCA mueve esta sesion (ni horario ni sala) — se usa para
+    // anclar el cambio manual que el usuario acaba de pedir en POST /mover-sesion.
     @PlanningPin
     private boolean pinned;
 
     @PlanningVariable(valueRangeProviderRefs = "timeSlotRange")
     private TimeSlot timeslot;
+
+    @PlanningVariable(valueRangeProviderRefs = "salaRange")
+    private Room sala;
 
     public SesionRamo() {
     }
@@ -82,6 +91,14 @@ public class SesionRamo {
         this.timeslot = timeslot;
     }
 
+    public Room getSala() {
+        return sala;
+    }
+
+    public void setSala(Room sala) {
+        this.sala = sala;
+    }
+
     public TimeSlot getTimeslotOriginal() {
         return timeslotOriginal;
     }
@@ -90,8 +107,19 @@ public class SesionRamo {
         this.timeslotOriginal = timeslotOriginal;
     }
 
+    public Room getSalaOriginal() {
+        return salaOriginal;
+    }
+
+    public void setSalaOriginal(Room salaOriginal) {
+        this.salaOriginal = salaOriginal;
+    }
+
+    /** true si el horario o la sala quedaron distintos a como estaban originalmente. */
     public boolean isMovida() {
-        return timeslotOriginal != null && !timeslotOriginal.equals(timeslot);
+        boolean cambioHorario = timeslotOriginal != null && !timeslotOriginal.equals(timeslot);
+        boolean cambioSala = salaOriginal != null && !salaOriginal.equals(sala);
+        return cambioHorario || cambioSala;
     }
 
     public boolean isPinned() {

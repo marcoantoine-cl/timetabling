@@ -4,7 +4,6 @@ import cl.colegio.timetabling.dto.RamoDto;
 import cl.colegio.timetabling.repository.CursoRepository;
 import cl.colegio.timetabling.repository.ProfesorRepository;
 import cl.colegio.timetabling.repository.RamoRepository;
-import cl.colegio.timetabling.repository.SalaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,14 +18,12 @@ public class RamoController {
     private final RamoRepository repositorio;
     private final CursoRepository cursoRepository;
     private final ProfesorRepository profesorRepository;
-    private final SalaRepository salaRepository;
 
     public RamoController(RamoRepository repositorio, CursoRepository cursoRepository,
-                           ProfesorRepository profesorRepository, SalaRepository salaRepository) {
+                           ProfesorRepository profesorRepository) {
         this.repositorio = repositorio;
         this.cursoRepository = cursoRepository;
         this.profesorRepository = profesorRepository;
-        this.salaRepository = salaRepository;
     }
 
     @GetMapping
@@ -68,6 +65,10 @@ public class RamoController {
         }
     }
 
+    // Nota: la sala NO se valida aqui — ya no es un dato fijo del ramo, es una variable
+    // de planificacion por sesion que decide el solver (ver SesionRamo.sala). La lista de
+    // salas disponibles (GET /api/salas) se usa como el universo de opciones para el solver,
+    // no como una referencia que cada ramo deba fijar de antemano.
     private void validar(RamoDto r) {
         if (r.getNombre() == null || r.getNombre().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El ramo debe tener nombre");
@@ -80,9 +81,6 @@ public class RamoController {
         }
         if (r.getProfesorId() == null || !profesorRepository.existe(r.getProfesorId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "profesorId invalido o inexistente: " + r.getProfesorId());
-        }
-        if (r.getSalaId() != null && !salaRepository.existe(r.getSalaId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "salaId inexistente: " + r.getSalaId());
         }
     }
 }
