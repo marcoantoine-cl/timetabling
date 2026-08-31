@@ -131,8 +131,10 @@ duras cumplidas, con N puntos de penalización blanda).
 **Blandas (soft, se optimizan pero no bloquean una solución):**
 8. Repartir las sesiones de cada curso de forma pareja entre los días
    (evita "todo lenguaje el lunes").
-9. Evitar que un profesor tenga demasiadas horas seguidas el mismo día
-   (umbral configurable, `MAX_HORAS_SEGUIDAS_DESEABLE`).
+9. Evitar más de 3 horas seguidas de un mismo ramo el mismo día, y evitar
+   que sus sesiones queden separadas con huecos entre medio — se prefiere
+   agruparlas de a 2 bloques en la mayoría de los casos (umbrales
+   configurables: `MAX_HORAS_SEGUIDAS_RAMO`, `LARGO_RACHA_IDEAL`).
 10. Al editar un horario ya cargado, preferir no mover una sesión de su
     posición original salvo que sea necesario (usado por `/mover-sesion`).
 11. Dar preferencia a que ciertos ramos (`Ramo.preferirManana = true`, ej.

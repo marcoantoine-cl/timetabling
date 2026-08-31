@@ -10,12 +10,19 @@ import cl.colegio.timetabling.domain.SesionRamo;
 import cl.colegio.timetabling.domain.TimeSlot;
 import cl.colegio.timetabling.domain.Curso;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class TimetableConstraintProvider implements ConstraintProvider {
 
-    private static final int MAX_HORAS_SEGUIDAS_DESEABLE = 4;
+    // Regla de horas seguidas por ramo: evitar mas de 3 horas seguidas de un mismo ramo,
+    // prefiriendo dejarlas en parejas de 2 bloques en la mayoria de los casos.
+    private static final int MAX_HORAS_SEGUIDAS_RAMO = 3;
+    private static final int LARGO_RACHA_IDEAL = 2;
+    private static final int PENALIZACION_FRAGMENTACION = 8; // por cada hueco entre sesiones del mismo ramo/dia
+    private static final int PENALIZACION_LARGO_SUBOPTIMO = 1; // racha de 1 o de 3 (no ideal, pero tolerable)
+    private static final int PENALIZACION_POR_HORA_EXCEDIDA = 5; // por cada hora sobre el maximo (4a, 5a, ...)
 
     @Override
     public Constraint[] defineConstraints(ConstraintFactory factory) {
@@ -118,14 +125,17 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Balancear carga diaria por curso");
     }
 
-    // SOFT: evitar que un profesor tenga demasiadas horas seguidas el mismo dia.
+    // SOFT: evitar mas de 3 horas seguidas de un mismo ramo el mismo dia, y evitar que
+    // las sesiones de un mismo ramo queden separadas con huecos entre medio (ej. bloque 1
+    // y bloque 3 del mismo ramo el mismo dia, con otra cosa en el bloque 2) — se prefiere
+    // que si hay 2+ sesiones de un ramo el mismo dia, queden juntas, idealmente en pares.
     private Constraint evitarHorasSeguidasExcesivas(ConstraintFactory factory) {
         return factory.forEach(SesionRamo.class)
-                .groupBy(s -> s.getRamo().getTeacher(),
+                .groupBy(s -> s.getRamo(),
                         s -> s.getTimeslot().getDayOfWeek(),
                         ConstraintCollectors.toList())
-                .penalize(HardSoftScore.ONE_SOFT, (teacher, dia, sesiones) -> penalizacionHorasSeguidas(sesiones))
-                .asConstraint("Evitar horas seguidas excesivas");
+                .penalize(HardSoftScore.ONE_SOFT, (ramo, dia, sesiones) -> penalizacionHorasSeguidasRamo(sesiones))
+                .asConstraint("Evitar horas seguidas excesivas de un mismo ramo");
     }
 
     // SOFT: al editar un horario ya cargado, preferir no mover una sesion de su horario
@@ -157,24 +167,47 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Preferir ramos de manana en horario matutino");
     }
 
-    // Calcula el exceso sobre MAX_HORAS_SEGUIDAS_DESEABLE en la racha continua mas larga del dia.
-    private int penalizacionHorasSeguidas(List<SesionRamo> sesionesDelDia) {
+    // Calcula la penalizacion para las sesiones de UN ramo en UN dia:
+    // 1) Fragmentacion: si quedan en mas de una racha (hay un hueco entre sesiones del
+    //    mismo ramo ese dia), penaliza fuerte por cada racha de mas.
+    // 2) Largo de cada racha: ideal = 2 (sin penalizacion). 1 o 3 se toleran con
+    //    penalizacion leve. 4+ se penaliza fuerte y creciente ("evitar mas de 3 seguidas").
+    private int penalizacionHorasSeguidasRamo(List<SesionRamo> sesionesDelDia) {
         List<Integer> bloques = sesionesDelDia.stream()
                 .map(s -> s.getTimeslot().getBlock())
                 .sorted()
                 .collect(Collectors.toList());
 
-        int penalizacion = 0;
+        List<Integer> largosDeRachas = new ArrayList<>();
         int rachaActual = 1;
         for (int i = 1; i < bloques.size(); i++) {
             if (bloques.get(i) - bloques.get(i - 1) == 1) {
                 rachaActual++;
             } else {
-                penalizacion += Math.max(0, rachaActual - MAX_HORAS_SEGUIDAS_DESEABLE);
+                largosDeRachas.add(rachaActual);
                 rachaActual = 1;
             }
         }
-        penalizacion += Math.max(0, rachaActual - MAX_HORAS_SEGUIDAS_DESEABLE);
+        largosDeRachas.add(rachaActual);
+
+        int penalizacion = 0;
+
+        // Huecos entre sesiones del mismo ramo el mismo dia (ej. bloque 1 y bloque 3 sueltos).
+        if (largosDeRachas.size() > 1) {
+            penalizacion += (largosDeRachas.size() - 1) * PENALIZACION_FRAGMENTACION;
+        }
+
+        for (int largo : largosDeRachas) {
+            if (largo == LARGO_RACHA_IDEAL) {
+                continue; // racha de 2: ideal, sin penalizacion
+            }
+            if (largo > MAX_HORAS_SEGUIDAS_RAMO) {
+                penalizacion += (largo - MAX_HORAS_SEGUIDAS_RAMO) * PENALIZACION_POR_HORA_EXCEDIDA;
+            } else {
+                penalizacion += PENALIZACION_LARGO_SUBOPTIMO; // racha de 1 o de 3
+            }
+        }
+
         return penalizacion;
     }
 }
