@@ -8,6 +8,7 @@ import cl.colegio.timetabling.dto.MoverSesionRequest;
 import cl.colegio.timetabling.dto.RamoDto;
 import cl.colegio.timetabling.dto.TimetableRequest;
 import cl.colegio.timetabling.dto.TimetableRequestMapper;
+import cl.colegio.timetabling.service.DatasetAjustadoGenerator;
 import cl.colegio.timetabling.service.DemoDataGenerator;
 import cl.colegio.timetabling.service.TimetableRequestBuilderService;
 import cl.colegio.timetabling.service.TimetableService;
@@ -30,17 +31,20 @@ public class TimetableController {
 
     private final TimetableService timetableService;
     private final DemoDataGenerator demoDataGenerator;
+    private final DatasetAjustadoGenerator datasetAjustadoGenerator;
     private final TimetableRequestMapper requestMapper;
     private final TimetableVerificationService verificationService;
     private final TimetableRequestBuilderService requestBuilderService;
 
     public TimetableController(TimetableService timetableService,
                                 DemoDataGenerator demoDataGenerator,
+                                DatasetAjustadoGenerator datasetAjustadoGenerator,
                                 TimetableRequestMapper requestMapper,
                                 TimetableVerificationService verificationService,
                                 TimetableRequestBuilderService requestBuilderService) {
         this.timetableService = timetableService;
         this.demoDataGenerator = demoDataGenerator;
+        this.datasetAjustadoGenerator = datasetAjustadoGenerator;
         this.requestMapper = requestMapper;
         this.verificationService = verificationService;
         this.requestBuilderService = requestBuilderService;
@@ -50,6 +54,24 @@ public class TimetableController {
     @GetMapping("/demo/solve")
     public Map<String, Object> resolverDemo() {
         Timetable problema = demoDataGenerator.generarProblema();
+        Timetable solucion = timetableService.resolver(problema);
+        return formatear(solucion);
+    }
+
+    // Devuelve el dataset a escala real (24 cursos, 10 bloques, ~30 profesores) como JSON,
+    // SIN resolver. Util para inspeccionarlo o cargarlo en el frontend antes de resolver.
+    @GetMapping("/dataset-ajustado")
+    public TimetableRequest obtenerDatasetAjustado() {
+        return datasetAjustadoGenerator.generar();
+    }
+
+    // Genera el dataset a escala real y lo resuelve de una. OJO: a esta escala (816 sesiones)
+    // el termination.spent-limit por defecto (30s en application.yml) puede no alcanzar para
+    // llegar a 0hard — si el resultado queda con hard < 0, subir spent-limit y probar de nuevo
+    // antes de asumir que el dataset es infactible.
+    @GetMapping("/dataset-ajustado/solve")
+    public Map<String, Object> resolverDatasetAjustado() {
+        Timetable problema = mapearOFallar(datasetAjustadoGenerator.generar());
         Timetable solucion = timetableService.resolver(problema);
         return formatear(solucion);
     }

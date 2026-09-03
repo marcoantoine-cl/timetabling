@@ -44,6 +44,11 @@ funciona de inmediato sin tener que cargar nada a mano primero.
   usuario cargo via las paginas CRUD.
 - `GET /api/timetable/demo/solve`: resuelve el dataset de ejemplo hardcodeado
   en `DemoDataGenerator` (independiente del CRUD, útil para pruebas rápidas).
+- `GET /api/timetable/dataset-ajustado`: devuelve, como JSON sin resolver, un
+  dataset a **escala real** (24 cursos, 10 bloques/día, ~30 profesores, 816
+  sesiones) — ver sección "Dataset ajustado" más abajo.
+- `GET /api/timetable/dataset-ajustado/solve`: genera ese mismo dataset y lo
+  resuelve de una.
 - `POST /api/timetable/solve`: recibe cursos/profesores/ramos en JSON, resuelve
   DESDE CERO (ignora cualquier posición previa) y devuelve el horario,
   incluyendo la sala que el solver eligió para cada sesión. Campos nuevos
@@ -88,6 +93,83 @@ Esto resuelve el dataset de ejemplo (`DemoDataGenerator`) y devuelve el horario
 resultante junto al score (`0hard/-Nsoft` significa: todas las restricciones
 duras cumplidas, con N puntos de penalización blanda).
 
+## Dataset ajustado (`DatasetAjustadoGenerator`) — prueba a escala real
+
+Pensado para verificar que el motor sigue siendo factible y resuelve en un
+tiempo razonable a la escala real del colegio, no solo con el dataset de
+demo (que es deliberadamente chico para desarrollo rápido).
+
+**Parámetros:**
+
+| Parámetro | Valor | Por qué |
+|---|---|---|
+| Días | 5 | Lunes a viernes |
+| Bloques/día | 10 | Con horario real: recreo de 15 min entre bloque 4 y 5, almuerzo de 45 min entre bloque 7 y 8 |
+| Cursos | 24 | 12 niveles (1°-8° Básico, I-IV Medio) × 2 secciones (A/B) |
+| Profesores | 31 | Ver nota abajo — quedó en 31, no 30 exacto |
+| Salas | 28 | 24 aulas (una por curso) + 2 gimnasios + laboratorio + sala de computación |
+| Ramos | 264 | 11 asignaturas × 24 cursos |
+| Sesiones totales | 816 | Suma de horas semanales de todos los ramos |
+
+Carga por curso (34h/semana sobre 50 bloques disponibles): Lenguaje 6,
+Matemática 6, Historia 4, Ciencias 4, Inglés 3, Ed. Física 2, Artes 2,
+Música 2, Tecnología 2, Religión 2, Orientación 1 (horario fijo, jueves
+bloque 1, dictada por el profesor de Historia de ese curso — demuestra que
+un profesor puede dictar varios ramos a un mismo curso).
+
+**Por qué 31 profesores y no 30 exactos:** si un solo profesor de Religión
+cubriera los 24 cursos (2h c/u = 48h/semana) quedaría con una carga irreal.
+Se usan 2 profesores de Religión (24h c/u cada uno) en vez de forzar el
+número exacto a costa del realismo.
+
+**El punto deliberadamente ajustado:** los cursos de IV Medio tienen
+`horaSalidaMaxima` a las 13:30 (regla 4 — salida anticipada para PAES), lo
+que les deja solo 35 bloques/semana disponibles para sus 34h de carga — un
+solo bloque de margen. Un profesor de Religión además queda part-time (solo
+mañana, hasta las 13:30) para estresar también la ventana de contrato a esta
+escala.
+
+**Bug encontrado y corregido (validado con `/verificar` a esta escala):** la
+primera versión fijaba el horario de Orientación al mismo slot (jueves
+bloque 1) para los 24 cursos. Como solo hay 4 profesores de Historia
+cubriendo esos 24 cursos (6 cada uno, reutilizados como "profesor jefe" de
+Orientación), cada profesor terminaba necesitando estar en 6 salas a la vez
+— imposible. El solver rompía el horario fijo en 20 de las 24 sesiones para
+evitar choques de profesor, dando exactamente `-20hard`, 100% concentrado en
+la restricción "Horario fijo respetado" (confirmado con el detalle de
+`/verificar`). Se corrigió variando el horario fijo de Orientación según la
+posición del curso dentro del grupo de su profesor jefe
+(`SLOTS_ORIENTACION`), evitando la colisión — y de paso queda más realista
+(distintos niveles con Orientación en horarios distintos).
+
+**Limitación conocida, no resuelta a propósito:** el modelo actual no tiene
+un concepto de "tipo de sala" — cualquier sesión puede terminar asignada a
+cualquier sala, incluidos los gimnasios (nada le impide al solver poner
+Matemática en el Gimnasio y Educación Física en un aula). Si esto te importa
+para el dataset real, es una extensión que se puede agregar (un campo
+`Room.tipo` + una restricción que exija que ciertos ramos solo usen salas de
+cierto tipo) — no la agregué porque no la has pedido y cambiaría el modelo
+de nuevo.
+
+**Cómo probarlo:**
+
+```bash
+curl http://localhost:8080/api/timetable/dataset-ajustado/solve
+```
+
+⚠️ A esta escala (816 sesiones) el `termination.spent-limit` se subió de 30s
+a 120s en `application.yml` — no alcanza a converger a 0hard en el límite
+viejo. Si tu máquina es más lenta o quieres explorar más el espacio de
+soluciones, puedes subirlo más. Esto no afecta los datasets chicos (demo,
+`/solve` normal): esos terminan antes igual gracias a
+`unimproved-spent-limit` (si no hay mejora en 5s seguidos, corta ahí).
+
+Para diagnosticar cualquier `hard < 0` que te aparezca (en este dataset o en
+datos reales), usa `/verificar` — el script `armar_verificar.py` (o su
+equivalente en PowerShell, `armar_verificar.ps1`) automatiza tomar un
+resultado ya resuelto y pedirle a `/verificar` el detalle exacto por
+restricción, en vez de tener que inspeccionar las sesiones a mano.
+
 ## Modelo de dominio
 
 - `TimeSlot`: (día, bloque). El universo de slots se genera parametrizando
@@ -127,17 +209,21 @@ duras cumplidas, con N puntos de penalización blanda).
    (`horaIngreso`/`horaSalida`), si está definida.
 7. La sesión no puede terminar después de la hora de salida máxima del curso
    (`horaSalidaMaxima`, ej. IV medios en ciertos periodos), si está definida.
+8. Si dos sesiones del mismo ramo caen en bloques consecutivos el mismo día,
+   deben quedar en la misma sala (evita interrumpir una clase seguida con un
+   cambio de sala a mitad de camino). El profesor ya es el mismo
+   automáticamente — es fijo por ramo, no una variable del solver.
 
 **Blandas (soft, se optimizan pero no bloquean una solución):**
-8. Repartir las sesiones de cada curso de forma pareja entre los días
+9. Repartir las sesiones de cada curso de forma pareja entre los días
    (evita "todo lenguaje el lunes").
-9. Evitar más de 3 horas seguidas de un mismo ramo el mismo día, y evitar
+10. Evitar más de 3 horas seguidas de un mismo ramo el mismo día, y evitar
    que sus sesiones queden separadas con huecos entre medio — se prefiere
    agruparlas de a 2 bloques en la mayoría de los casos (umbrales
    configurables: `MAX_HORAS_SEGUIDAS_RAMO`, `LARGO_RACHA_IDEAL`).
-10. Al editar un horario ya cargado, preferir no mover una sesión de su
+11. Al editar un horario ya cargado, preferir no mover una sesión de su
     posición original salvo que sea necesario (usado por `/mover-sesion`).
-11. Dar preferencia a que ciertos ramos (`Ramo.preferirManana = true`, ej.
+12. Dar preferencia a que ciertos ramos (`Ramo.preferirManana = true`, ej.
     Lenguaje, Matemática) se dicten en horario de mañana, según el corte
     parametrizable `horaCorteManana` (default 13:00).
 

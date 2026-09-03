@@ -4,9 +4,11 @@ server:
 optaplanner:
   solver:
     termination:
-      # Corte por tiempo: ajustar segun tamaño real del colegio.
-      # Para instancias medianas (decenas de cursos) unos segundos ya dan soluciones muy buenas.
-      spent-limit: 30s
+      # Corte por tiempo: subido de 30s a 120s al agregar el dataset ajustado (24 cursos,
+      # ~816 sesiones) — a esa escala 30s puede no alcanzar para llegar a 0hard. No afecta
+      # los datasets chicos (demo, /solve normal): esos terminan antes igual gracias a
+      # unimproved-spent-limit (si no hay mejora en 5s seguidos, corta ahi sin esperar los 120s).
+      spent-limit: 120s
       # Alternativa: detenerse apenas el score no tenga penalizaciones duras y el score blando
       # deje de mejorar por N segundos (unimproved-spent-limit), util para re-solves rapidos.
       unimproved-spent-limit: 5s

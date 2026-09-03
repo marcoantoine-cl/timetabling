@@ -12,6 +12,7 @@ import cl.colegio.timetabling.domain.Curso;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TimetableConstraintProvider implements ConstraintProvider {
@@ -35,12 +36,13 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 horarioFijoRespetado(factory),
                 profesorDentroDeVentanaContrato(factory),
                 cursoDentroDeHorarioSalida(factory),
+                mismaSalaEnSesionesConsecutivasDelRamo(factory),
                 // --- SOFT ---
-                balanceCargaDiariaPorCurso(factory),
+//                balanceCargaDiariaPorCurso(factory),
                 evitarHorasSeguidasExcesivas(factory),
                 preferirMantenerHorarioOriginal(factory),
                 preferirMantenerSalaOriginal(factory),
-                preferirRamosEnLaManana(factory)
+//                preferirRamosEnLaManana(factory)
         };
     }
 
@@ -66,6 +68,20 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 })
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint("Curso dentro de su horario de salida");
+    }
+
+    // Si dos sesiones del MISMO ramo caen en bloques consecutivos el mismo dia, deben quedar
+    // en la MISMA sala. Cambiar de sala a mitad de una clase seguida interrumpe el desarrollo
+    // de la clase y hace perder tiempo — no es negociable, es restriccion dura.
+    // (El profesor ya es el mismo automaticamente: es fijo por ramo, no una variable del solver;
+    // solo la sala puede variar de una sesion a otra, por eso hace falta esta regla).
+    private Constraint mismaSalaEnSesionesConsecutivasDelRamo(ConstraintFactory factory) {
+        return factory.forEachUniquePair(SesionRamo.class,
+                        Joiners.equal(SesionRamo::getRamo))
+                .filter((s1, s2) -> s1.getTimeslot().isConsecutiveTo(s2.getTimeslot())
+                        && !Objects.equals(s1.getSala(), s2.getSala()))
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("Misma sala en sesiones consecutivas del mismo ramo");
     }
 
     // Un profesor no puede dictar dos sesiones al mismo tiempo.
