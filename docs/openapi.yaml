@@ -1,0 +1,430 @@
+openapi: 3.0.0
+info:
+  title: Sistema de Timetabling Escolar - API
+  version: 1.0.0
+  description: API REST para la gestión de entidades y ejecución del motor de planificación con OptaPlanner.
+
+servers:
+  - url: http://localhost:8080/api
+    description: Servidor de Desarrollo local
+
+paths:
+  # --- MOTOR DE PLANIFICACIÓN ---
+  /timetables/solve:
+    post:
+      summary: Inicia la resolución del problema de horarios
+      description: Ejecuta el solver de OptaPlanner para generar una distribución óptima de lecciones.
+      responses:
+        '200':
+          description: Planificación generada exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                  score:
+                    type: string
+  
+  /timetables/validate:
+    post:
+      summary: Valida una solución horaria cargada
+      description: Evalúa las restricciones duras y blandas de una planificación existente.
+      responses:
+        '200':
+          description: Validación completada con éxito.
+
+  # --- CURSOS ---
+  /cursos:
+    get:
+      summary: Listar todos los cursos
+      responses:
+        '200':
+          description: Lista de cursos.
+    post:
+      summary: Crear un curso
+      responses:
+        '201':
+          description: Curso creado.
+
+  /cursos/{id}:
+    get:
+      summary: Obtener curso por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Datos del curso.
+    put:
+      summary: Actualizar curso
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Curso actualizado.
+    delete:
+      summary: Eliminar curso
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Curso eliminado.
+
+  # --- ASIGNATURAS ---
+  /asignaturas:
+    get:
+      summary: Listar todas las asignaturas
+      responses:
+        '200':
+          description: Lista de asignaturas.
+    post:
+      summary: Crear una asignatura
+      responses:
+        '201':
+          description: Asignatura creada.
+
+  /asignaturas/{id}:
+    get:
+      summary: Obtener asignatura por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Datos de la asignatura.
+    put:
+      summary: Actualizar asignatura
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Asignatura actualizada.
+    delete:
+      summary: Eliminar asignatura
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Asignatura eliminada.
+
+  # --- PROFESORES ---
+  /profesores:
+    get:
+      summary: Listar todos los profesores
+      responses:
+        '200':
+          description: Lista de profesores.
+    post:
+      summary: Crear un profesor
+      responses:
+        '201':
+          description: Profesor creado.
+
+  /profesores/{id}:
+    get:
+      summary: Obtener profesor por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Datos del profesor.
+    put:
+      summary: Actualizar profesor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Profesor actualizado.
+    delete:
+      summary: Eliminar profesor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Profesor eliminado.
+
+  # --- SALAS ---
+  /salas:
+    get:
+      summary: Listar todas las salas
+      responses:
+        '200':
+          description: Lista de salas.
+    post:
+      summary: Crear una sala
+      responses:
+        '201':
+          description: Sala creada.
+
+  /salas/{id}:
+    get:
+      summary: Obtener sala por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Datos de la sala.
+    put:
+      summary: Actualizar sala
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sala actualizada.
+    delete:
+      summary: Eliminar sala
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Sala eliminada.
+
+  # --- BLOQUES HORARIOS ---
+  /bloques-horarios:
+    get:
+      summary: Listar todos los bloques horarios
+      responses:
+        '200':
+          description: Lista de bloques.
+    post:
+      summary: Crear un bloque horario
+      responses:
+        '201':
+          description: Bloque creado.
+
+  /bloques-horarios/{id}:
+    get:
+      summary: Obtener bloque horario por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Datos del bloque.
+    put:
+      summary: Actualizar bloque horario
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bloque actualizado.
+    delete:
+      summary: Eliminar bloque horario
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Bloque eliminado.
+
+  # --- LECCIONES ---
+  /lecciones:
+    get:
+      summary: Listar todas las lecciones
+      responses:
+        '200':
+          description: Lista de lecciones.
+    post:
+      summary: Crear una lección
+      responses:
+        '201':
+          description: Lección creada.
+
+  /lecciones/{id}:
+    get:
+      summary: Obtener lección por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Datos de la lección.
+    put:
+      summary: Actualizar lección
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lección actualizada.
+    delete:
+      summary: Eliminar lección
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Lección eliminada.
+
+components:
+  schemas:
+    Curso:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        nivel:
+          type: string
+        tieneMovilidadReducida:
+          type: boolean
+
+    Asignatura:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        horasSemanales:
+          type: integer
+        salaRequeridaId:
+          type: integer
+          format: int64
+
+    Profesor:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        maxHorasSemanales:
+          type: integer
+        disponibilidades:
+          type: array
+          items:
+            $ref: '#/components/schemas/DisponibilidadDiaria'
+
+    DisponibilidadDiaria:
+      type: object
+      properties:
+        diaSemana:
+          type: string
+          enum: [LUNES, MARTES, MIERCOLES, JUEVES, VIERNES]
+        bloqueInicio:
+          type: integer
+        bloqueFin:
+          type: integer
+
+    Sala:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        esEspecializada:
+          type: boolean
+        esAccesible:
+          type: boolean
+        color:
+          type: string
+
+    BloqueHorario:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        diaSemana:
+          type: string
+          enum: [LUNES, MARTES, MIERCOLES, JUEVES, VIERNES]
+        orden:
+          type: integer
+        esProtegido:
+          type: boolean
+
+    Leccion:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        cursoId:
+          type: integer
+          format: int64
+        asignaturaId:
+          type: integer
+          format: int64
+        profesorId:
+          type: integer
+          format: int64
+        salaId:
+          type: integer
+          format: int64
+        bloqueHorarioId:
+          type: integer
+          format: int64

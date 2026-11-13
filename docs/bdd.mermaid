@@ -1,0 +1,60 @@
+erDiagram
+    CURSO {
+        Long id PK
+        String nombre
+        String nivel
+        Boolean tiene_movilidad_reducida
+    }
+
+    ASIGNATURA {
+        Long id PK
+        String nombre
+        Integer horas_semanales
+        Long sala_requerida_id FK
+    }
+
+    PROFESOR {
+        Long id PK
+        String nombre
+        Integer max_horas_semanales
+    }
+
+    DISPONIBILIDAD_DIARIA {
+        Long id PK
+        Long profesor_id FK
+        String dia_semana
+        Integer bloque_inicio
+        Integer bloque_fin
+    }
+
+    SALA {
+        Long id PK
+        String nombre
+        Boolean es_especializada
+        Boolean es_accesible
+        String color
+    }
+
+    BLOQUE_HORARIO {
+        Long id PK
+        String dia_semana
+        Integer orden
+        Boolean es_protegido
+    }
+
+    CLASE {
+        Long id PK
+        Long curso_id FK
+        Long asignatura_id FK
+        Long profesor_id FK
+        Long sala_id FK
+        Long bloque_horario_id FK
+    }
+
+    PROFESOR ||--o{ DISPONIBILIDAD_DIARIA : "tiene"
+    ASIGNATURA }o--o| SALA : "requiere"
+    CURSO ||--o{ CLASE : "recibe"
+    ASIGNATURA ||--o{ CLASE : "se imparte en"
+    PROFESOR ||--o{ CLASE : "dicta"
+    SALA ||--o{ CLASE : "alberga"
+    BLOQUE_HORARIO ||--o{ CLASE : "programa en"
